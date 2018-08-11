@@ -1,8 +1,10 @@
 (ns flappy-bird.core
   (:require [play-clj.core :refer :all]
+            [play-clj.g2d :refer :all]
             [play-clj.math :refer :all]
             [play-clj.ui :refer :all])
-  (:import [com.badlogic.gdx.math Rectangle Vector2]))
+  (:import [com.badlogic.gdx.graphics Texture Texture$TextureFilter]
+           [com.badlogic.gdx.math Rectangle Vector2]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,11 +71,30 @@
 (defscreen main-screen
   :on-show
   (fn [screen entities]
-    (let [camera (orthographic :set-to-ortho true 136 204)]
+    (let [camera (orthographic :set-to-ortho true 136 204)
+          tex (Texture. "texture.png")]
+      (.setFilter tex
+                  Texture$TextureFilter/Linear
+                  Texture$TextureFilter/Linear)
       (update! screen
                :renderer (stage)
                :camera camera
-               :world {:rect (rectangle 0 0 17 12)})
+               :world {:rect (rectangle 0 0 17 12)}
+               :assets {:bg (texture tex
+                                     :set-region 0 0 136 43
+                                     :flip false true)
+                        :grass (texture tex
+                                        :set-region 0 43 143 11
+                                        :flip false true)
+                        :bird-down (texture tex
+                                            :set-region 136 0 17 12
+                                            :flip false true)
+                        :bird (texture tex
+                                       :set-region 153 0 17 12
+                                       :flip false true)
+                        :bird-up (texture tex
+                                          :set-region 170 0 17 12
+                                          :flip false true)})
       (new-bird 33 100 17 12)))
   :on-touch-down
   (fn [screen entities]
