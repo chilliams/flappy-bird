@@ -30,7 +30,9 @@
 
 (defprotocol Updatable
   (next-frame [this delta])
-  (touch-down [this]))
+  (touch-down [this])
+  (get-x [this])
+  (get-y [this]))
 
 (defrecord Bird
     [width
@@ -41,10 +43,13 @@
      rotation]
   Updatable
   (touch-down [_]
-    (let [new-velocity (-> velocity
-                           (vector-2! :cpy)
-                           (y! -140))]
-      (-> Bird width height position new-velocity acceleration rotation)))
+    (let [new-velocity (vector-2! velocity :cpy)]
+      (y! new-velocity -140)
+      (->Bird width height position new-velocity acceleration rotation)))
+  (get-x [_]
+    (x position))
+  (get-y [_]
+    (y position))
   (next-frame [_ delta]
     (let [accel (-> acceleration
                     (vector-2! :cpy)
@@ -66,60 +71,98 @@
               rotation))))
 
 (defn new-bird [x y width height]
-  (->Bird width height (vector-2 x y) (vector-2 0 0) (vector-2 0 460) 0))
+  (->Bird width height (vector-2 x y) (vector-2 0 0) (vector-2 0
+                                                               460
+                                                               ;; 0
+                                                               ) 0))
+
+(defn load-assets []
+  (let [tex (Texture. "texture.png")
+        _ (.setFilter tex
+                      Texture$TextureFilter/Linear
+                      Texture$TextureFilter/Linear)
+        bird-down (texture tex
+                           :set-region 136 0 17 12
+                           :flip false true)
+        bird (texture tex
+                      :set-region 153 0 17 12
+                      :flip false true)
+        bird-up (texture tex
+                         :set-region 170 0 17 12
+                         :flip false true)
+        birds [bird-down bird bird-up]]
+    {:bg (texture tex
+                  :set-region 0 0 136 43
+                  :flip false true)
+     :grass (texture tex
+                     :set-region 0 43 143 11
+                     :flip false true)
+     :bird-down bird-down
+     :bird bird
+     :bird-up bird-up
+     :bird-animation (animation 0.06 birds)
+     :skull-up (texture tex :set-region 192 0 24 14)
+     :skull-down (texture tex
+                          :set-region 192 0 24 14
+                          :flip false true)
+     :bar (texture tex
+                   :set-region 136 16 22 3
+                   :flip false true)}))
+
+(defn update-world [world delta-time]
+  (update world :bird #(next-frame % delta-time)))
 
 (defscreen main-screen
   :on-show
   (fn [screen entities]
-    (let [camera (orthographic :set-to-ortho true 136 204)
-          tex (Texture. "texture.png")]
-      (.setFilter tex
-                  Texture$TextureFilter/Linear
-                  Texture$TextureFilter/Linear)
+    (let [camera (orthographic :set-to-ortho true 136 204)]
       (update! screen
                :renderer (stage)
                :camera camera
-               :world {:rect (rectangle 0 0 17 12)}
-               :assets {:bg (texture tex
-                                     :set-region 0 0 136 43
-                                     :flip false true)
-                        :grass (texture tex
-                                        :set-region 0 43 143 11
-                                        :flip false true)
-                        :bird-down (texture tex
-                                            :set-region 136 0 17 12
-                                            :flip false true)
-                        :bird (texture tex
-                                       :set-region 153 0 17 12
-                                       :flip false true)
-                        :bird-up (texture tex
-                                          :set-region 170 0 17 12
-                                          :flip false true)})
-      (new-bird 33 100 17 12)))
+               :world {:rect (rectangle 0 0 17 12)
+                       :bird (new-bird 33 100 17 12)}
+               :assets (load-assets))))
   :on-touch-down
-  (fn [screen entities]
-    (map touch-down entities))
+  (fn [{:keys [world] :as screen} entities]
+    (update! screen :world (update world :bird touch-down)))
   :on-render
-  (fn [{:keys [delta-time world] :as screen} entities]
+  (fn [{:keys [assets delta-time world] :as screen} entities]
     (clear!)
-    (let [{^Rectangle rect :rect} world
+    (update! screen :world (update-world world delta-time))
+    (let [{:keys [rect bird]} world
           x (rectangle! rect :get-x)
           y (rectangle! rect :get-y)
           width (rectangle! rect :get-width)
           height (rectangle! rect :get-height)
           new-x (if (> x 137)
                   -20
-                  (inc x))]
+                  (inc x))
+          {bird-tex :bird
+           bg :bg
+           grass :grass
+           } assets]
       (render!
        screen
        [(shape :filled
-               :set-color (/ 87 255) (/ 109 255) (/ 120 255) 1
-               :rect x y width height)
+               :set-color (/ 55 255) (/ 80 255) (/ 100 255) 1
+               :rect 0 0 136 98)
         (shape :line
                :set-color (/ 255 255) (/ 109 255) (/ 120 255) 1
-               :rect x y width height)])
-      (rectangle! rect :set-x new-x))
-    (map #(next-frame % delta-time) entities)))
+               :rect x y width height)
+        (assoc bg
+               :x 0 :y 98
+               :width 136 :height 43)
+        (assoc grass
+               :x 0 :y 141
+               :width 136 :height 11)
+        (shape :filled
+               :set-color (/ 147 255) (/ 80 255) (/ 27 255) 1
+               :rect 0 152 136 52)
+        (assoc bird-tex
+               :x (get-x bird) :y (get-y bird)
+               :width (:width bird) :height (:height bird))
+        ])
+      (rectangle! rect :set-x new-x))))
 
 (defgame flappy-bird-game
   :on-create
