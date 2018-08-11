@@ -6,5 +6,5 @@
 
 (defn -main
   []
-  (LwjglApplication. flappy-bird-game "flappy-bird" 800 600)
+  (LwjglApplication. flappy-bird-game "Flappy Bird" 272 408)
   (Keyboard/enableRepeatEvents true))
