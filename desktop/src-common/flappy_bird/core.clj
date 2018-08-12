@@ -8,6 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
+(defonce manager (asset-manager))
+(set-asset-manager! manager)
+
 (defscreen fps-screen
   :on-show
   (fn [screen entities]
@@ -115,54 +118,50 @@
 (defscreen main-screen
   :on-show
   (fn [screen entities]
-    (let [camera (orthographic :set-to-ortho true 136 204)]
+    (let [camera (orthographic :set-to-ortho true 136 204)
+          {:keys [bg grass] :as assets} (load-assets)]
       (update! screen
                :renderer (stage)
                :camera camera
                :world {:rect (rectangle 0 0 17 12)
                        :bird (new-bird 33 100 17 12)}
-               :assets (load-assets))))
+               :assets assets)
+      [(shape :filled
+              :set-color (/ 55 255) (/ 80 255) (/ 100 255) 1
+              :rect 0 0 136 98)
+       (assoc bg
+              :x 0 :y 98
+              :width 136 :height 43)
+       (assoc grass
+              :x 0 :y 141
+              :width 136 :height 11)
+       (shape :filled
+              :set-color (/ 147 255) (/ 80 255) (/ 27 255) 1
+              :rect 0 152 136 52)]))
   :on-touch-down
   (fn [{:keys [world] :as screen} entities]
-    (update! screen :world (update world :bird touch-down)))
+    (update! screen :world (update world :bird touch-down))
+    entities)
   :on-render
   (fn [{:keys [assets delta-time world] :as screen} entities]
     (clear!)
     (update! screen :world (update-world world delta-time))
-    (let [{:keys [rect bird]} world
+    (let [{:keys [^Rectangle rect bird]} world
+          bird-tex (:bird assets)
           x (rectangle! rect :get-x)
           y (rectangle! rect :get-y)
           width (rectangle! rect :get-width)
           height (rectangle! rect :get-height)
           new-x (if (> x 137)
                   -20
-                  (inc x))
-          {bird-tex :bird
-           bg :bg
-           grass :grass
-           } assets]
-      (render!
-       screen
-       [(shape :filled
-               :set-color (/ 55 255) (/ 80 255) (/ 100 255) 1
-               :rect 0 0 136 98)
-        (shape :line
-               :set-color (/ 255 255) (/ 109 255) (/ 120 255) 1
-               :rect x y width height)
-        (assoc bg
-               :x 0 :y 98
-               :width 136 :height 43)
-        (assoc grass
-               :x 0 :y 141
-               :width 136 :height 11)
-        (shape :filled
-               :set-color (/ 147 255) (/ 80 255) (/ 27 255) 1
-               :rect 0 152 136 52)
-        (assoc bird-tex
-               :x (get-x bird) :y (get-y bird)
-               :width (:width bird) :height (:height bird))
-        ])
-      (rectangle! rect :set-x new-x))))
+                  (inc x))]
+      (render! screen entities)
+      (render! screen
+               [(assoc bird-tex
+                       :x (get-x bird) :y (get-y bird)
+                       :width (:width bird) :height (:height bird))])
+      (rectangle! rect :set-x new-x))
+    entities))
 
 (defgame flappy-bird-game
   :on-create

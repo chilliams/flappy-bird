@@ -15,6 +15,11 @@
                  [play-clj "1.0.0"]]
 
   :source-paths ["src" "src-common"]
-  :javac-options ["-target" "1.6" "-source" "1.6" "-Xlint:-options"]
+  :javac-options ["-target" "1.8"
+                  "-source" "1.8"
+                  "-Xlint:-options"
+                  "-XgcPrio:deterministic"
+                  "-Xms:1g"
+                  "-Xmx:1g" ]
   :aot [flappy-bird.core.desktop-launcher]
   :main flappy-bird.core.desktop-launcher)
